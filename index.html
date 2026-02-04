@@ -360,6 +360,30 @@
       z-index: 2;
     }
 
+    .tap-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 240, 246, 0.85);
+      z-index: 3;
+    }
+
+    .tap-overlay.hidden { display: none; }
+
+    .tap-button {
+      border: 3px solid #e55272;
+      background: #ff6b9a;
+      color: #fff;
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-family: "Press Start 2P", system-ui, sans-serif;
+      font-size: 12px;
+      box-shadow: 0 8px 0 #e55272;
+      cursor: pointer;
+      animation: heart-pulse 2s ease-in-out infinite;
+    }
+
     @keyframes screen-flash {
       0% { opacity: 0; }
       20% { opacity: 0.7; }
@@ -466,6 +490,9 @@
       </div>
 
     <div class="stage" id="intro">
+      <div class="tap-overlay" id="tapOverlay">
+        <button class="tap-button" id="tapStart">Tap to Begin</button>
+      </div>
       <div class="flash" aria-hidden="true"></div>
       <div class="envelope">
         <div class="base"></div>
@@ -560,17 +587,47 @@
     const restartBtn = document.getElementById('restartBtn');
     const card = document.querySelector('.card');
     const confetti = document.querySelector('.confetti');
+    const tapOverlay = document.getElementById('tapOverlay');
+    const tapStart = document.getElementById('tapStart');
 
     const awoo = new Audio('awoo.mp3');
-    const lastSong = new Audio('make_you_mine.mp3');
-    lastSong.loop = true;
+    awoo.loop = true;
+    const makeYouMine = new Audio('make_you_mine.mp3');
+    makeYouMine.loop = true;
+    const happyHappy = new Audio('happy_happy.mp3');
+    happyHappy.loop = true;
     const meow = new Audio('meow.mp3');
 
+    function stopAllSounds() {
+      [awoo, makeYouMine, happyHappy, meow].forEach((sound) => {
+        sound.pause();
+        sound.currentTime = 0;
+      });
+    }
+
+    async function playForPage(target) {
+      try {
+        if (target === intro) {
+          await awoo.play();
+        } else if (target === question) {
+          await makeYouMine.play();
+        } else if (target === celebrate) {
+          await happyHappy.play();
+        }
+      } catch (err) {
+        console.warn('Audio playback blocked:', err);
+      }
+    }
+
+    let currentPage = intro;
+
     function show(target) {
+      stopAllSounds();
       intro.classList.add('hidden');
       question.classList.add('hidden');
       celebrate.classList.add('hidden');
       target.classList.remove('hidden');
+      currentPage = target;
       if (target === question) {
         noBtn.style.transform = 'translate(0px, 0px)';
         noMoveCount = 0;
@@ -578,6 +635,7 @@
         baseRect = null;
         bounds = null;
       }
+      playForPage(target);
     }
 
     function triggerConfetti() {
@@ -587,24 +645,12 @@
       confetti.classList.add('pop');
     }
 
-    openBtn.addEventListener('click', async () => {
+    openBtn.addEventListener('click', () => {
       show(question);
-      try {
-        awoo.currentTime = 0;
-        await awoo.play();
-      } catch (err) {
-        console.warn('Awoo playback blocked:', err);
-      }
     });
     yesBtn.addEventListener('click', async () => {
       show(celebrate);
       triggerConfetti();
-      try {
-        lastSong.currentTime = 0;
-        await lastSong.play();
-      } catch (err) {
-        console.warn('Last song playback blocked:', err);
-      }
       try {
         meow.currentTime = 0;
         await meow.play();
@@ -653,6 +699,20 @@
     });
 
     restartBtn.addEventListener('click', () => show(intro));
+
+    playForPage(intro);
+
+    let audioUnlocked = false;
+    async function unlockAudio() {
+      if (audioUnlocked) return;
+      audioUnlocked = true;
+      tapOverlay.classList.add('hidden');
+      await playForPage(currentPage);
+    }
+
+    document.addEventListener('pointerdown', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+    tapStart.addEventListener('click', unlockAudio);
   </script>
 </body>
 </html>
